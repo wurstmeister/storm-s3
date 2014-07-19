@@ -25,7 +25,7 @@ import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.amazonaws.services.s3.transfer.TransferManager;
-import org.apache.storm.s3.bolt.format.DefaultFileNameFormat;
+import org.apache.storm.s3.format.DefaultFileNameFormat;
 import org.apache.storm.s3.output.MemBufferedS3OutputStream;
 import org.junit.Test;
 
@@ -36,6 +36,7 @@ import static org.junit.Assert.assertEquals;
 
 /**
  * Requires ~/.aws/credentials file
+ * <p/>
  * <p/>
  * [aws-testing]
  * aws_access_key_id=<ACCESS_KEY>
@@ -53,7 +54,7 @@ public class MemBufferedS3OutputStreamTest {
         client.createBucket(bucketName);
         TransferManager tx = new TransferManager(client);
         OutputStream outputStream = new MemBufferedS3OutputStream(tx, bucketName,
-                new DefaultFileNameFormat().withPrefix("tests/"), "text/plain", 1);
+                new DefaultFileNameFormat().withPrefix("test"), "text/plain", 1, "test-id");
         OutputStreamWriter writer = new OutputStreamWriter(outputStream);
         PrintWriter printer = new PrintWriter(writer);
         printer.println("line1");

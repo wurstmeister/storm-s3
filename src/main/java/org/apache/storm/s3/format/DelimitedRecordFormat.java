@@ -15,10 +15,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.storm.s3.bolt.format;
+package org.apache.storm.s3.format;
 
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
+import storm.trident.tuple.TridentTuple;
 
 /**
  * RecordFormat implementation that uses field and record delimiters.
@@ -77,6 +78,22 @@ public class DelimitedRecordFormat implements RecordFormat {
         int size = fields.size();
         for (int i = 0; i < size; i++) {
             sb.append(tuple.getValueByField(fields.get(i)));
+            if (i != size - 1) {
+                sb.append(this.fieldDelimiter);
+            }
+        }
+        sb.append(this.recordDelimiter);
+        return sb.toString().getBytes();
+    }
+
+    @Override
+    public byte[] format(TridentTuple tuple) {
+        StringBuilder sb = new StringBuilder();
+        int size = this.fields.size();
+        for (int i = 0; i < size; i++) {
+            String field = fields.get(i);
+            Object valueByField = tuple.getValueByField(field);
+            sb.append(valueByField);
             if (i != size - 1) {
                 sb.append(this.fieldDelimiter);
             }

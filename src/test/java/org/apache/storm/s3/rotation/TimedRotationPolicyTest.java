@@ -15,21 +15,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.storm.s3.bolt.rotation;
+package org.apache.storm.s3.rotation;
 
-import backtype.storm.tuple.Tuple;
+import org.junit.Test;
 
-/**
- * File rotation policy that will never rotate...
- * Just one big file. Intended for testing purposes.
- */
-public class NoRotationPolicy implements FileRotationPolicy {
-    @Override
-    public boolean mark(Tuple tuple, long offset) {
-        return false;
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+
+public class TimedRotationPolicyTest {
+
+
+    @Test
+    public void testMark() throws Exception {
+        int duration = 2;
+        TimedRotationPolicy policy = new TimedRotationPolicy(duration, TimeUnit.SECONDS);
+        int sleepTime = 0;
+        while (!policy.mark(0)) {
+            Thread.sleep(1000);
+            sleepTime++;
+        }
+        assertEquals(sleepTime, duration);
+        policy.reset();
+        assertFalse(policy.mark(0L));
     }
 
-    @Override
-    public void reset() {
-    }
 }

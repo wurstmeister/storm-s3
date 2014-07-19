@@ -20,7 +20,7 @@ package org.apache.storm.s3.output;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.transfer.TransferManager;
 import com.amazonaws.services.s3.transfer.Upload;
-import org.apache.storm.s3.bolt.format.FileNameFormat;
+import org.apache.storm.s3.format.FileNameFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,15 +39,17 @@ public class MemBufferedS3OutputStream extends OutputStream {
     private final FileNameFormat fileNameFormat;
     private final ByteArrayOutputStream outputStream;
     private final TransferManager tx;
+    private final String identifier;
 
     public MemBufferedS3OutputStream(TransferManager tx, String bucketName,
-                                     FileNameFormat fileNameFormat, String contentType, long rotation) {
+                                     FileNameFormat fileNameFormat, String contentType, long rotation, String identifier) {
         this.outputStream = new ByteArrayOutputStream();
         this.tx = tx;
         this.bucketName = bucketName;
         this.fileNameFormat = fileNameFormat;
         this.contentType = contentType;
         this.rotation = rotation;
+        this.identifier = identifier;
     }
 
     @Override
@@ -63,7 +65,7 @@ public class MemBufferedS3OutputStream extends OutputStream {
         ObjectMetadata meta = new ObjectMetadata();
         meta.setContentType(contentType);
         meta.setContentLength(buf.length);
-        final Upload myUpload = tx.upload(bucketName, fileNameFormat.getName(rotation, System.currentTimeMillis()), input, meta);
+        final Upload myUpload = tx.upload(bucketName, fileNameFormat.getName(identifier, rotation, System.currentTimeMillis()), input, meta);
         try {
             myUpload.waitForCompletion();
             LOG.info(myUpload.getDescription());

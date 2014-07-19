@@ -15,30 +15,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.storm.s3.bolt.rotation;
-
-import org.junit.Test;
-
-import java.util.concurrent.TimeUnit;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-
-public class TimedRotationPolicyTest {
+package org.apache.storm.s3.rotation;
 
 
-    @Test
-    public void testMark() throws Exception {
-        int duration = 2;
-        TimedRotationPolicy policy = new TimedRotationPolicy(duration, TimeUnit.SECONDS);
-        int sleepTime = 0;
-        while (!policy.mark(null, 0) ) {
-            Thread.sleep(1000);
-            sleepTime++;
-        }
-        assertEquals(sleepTime, duration);
-        policy.reset();
-        assertFalse(policy.mark(null, 0L));
-    }
+import java.io.Serializable;
 
+/**
+ * Used by the S3Bolt to decide when to rotate files.
+ * <p/>
+ * The S3Bolt will call the <code>mark()</code> method for every
+ * tuple received. If the <code>mark()</code> method returns
+ * <code>true</code> the S3Bolt will perform a file rotation.
+ * <p/>
+ * After file rotation, the S3Bolt will call the <code>reset()</code>
+ * method.
+ */
+public interface FileRotationPolicy extends Serializable {
+    /**
+     * Called for every tuple the S3Bolt executes.
+     *
+     * @param offset current offset of file being written
+     * @return true if a file rotation should be performed
+     */
+    boolean mark(long offset);
+
+    /**
+     * Called after the S3Bolt rotates a file.
+     */
+    void reset();
 }

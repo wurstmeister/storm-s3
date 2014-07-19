@@ -15,17 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.storm.s3.bolt.rotation;
-
-import backtype.storm.tuple.Tuple;
+package org.apache.storm.s3.rotation;
 
 import java.util.concurrent.TimeUnit;
 
 /**
- *
  * The granularity of this policy depends on the frequency with which
  * tuples are written
- *
  */
 public class TimedRotationPolicy implements FileRotationPolicy {
     private long lastRotation;
@@ -39,12 +35,11 @@ public class TimedRotationPolicy implements FileRotationPolicy {
     /**
      * Called for every tuple the S3Bolt executes.
      *
-     * @param tuple  The tuple executed.
      * @param offset current offset of file being written
      * @return true if a file rotation should be performed
      */
     @Override
-    public boolean mark(Tuple tuple, long offset) {
+    public boolean mark(long offset) {
         long elapsed = System.currentTimeMillis() - lastRotation;
         return elapsed > interval;
     }

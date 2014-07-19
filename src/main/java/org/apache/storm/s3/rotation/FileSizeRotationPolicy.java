@@ -15,10 +15,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.storm.s3.bolt.rotation;
+package org.apache.storm.s3.rotation;
 
 
-import backtype.storm.tuple.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +63,7 @@ public class FileSizeRotationPolicy implements FileRotationPolicy {
     }
 
     @Override
-    public boolean mark(Tuple tuple, long offset) {
+    public boolean mark(long offset) {
         long diff = offset - this.lastOffset;
         this.currentBytesWritten += diff;
         this.lastOffset = offset;

@@ -15,17 +15,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.storm.s3.bolt.format;
-
-
-import backtype.storm.tuple.Tuple;
-
-import java.io.Serializable;
+package org.apache.storm.s3.rotation;
 
 /**
- * Formats a Tuple object into a byte array
- * that will be written to S3.
+ * File rotation policy that will never rotate...
+ * Just one big file. Intended for testing purposes.
  */
-public interface RecordFormat extends Serializable {
-    byte[] format(Tuple tuple);
+public class NoRotationPolicy implements FileRotationPolicy {
+
+    @Override
+    public boolean mark(long offset) {
+        return false;
+    }
+
+    @Override
+    public void reset() {
+    }
 }

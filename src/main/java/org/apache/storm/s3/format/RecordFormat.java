@@ -15,28 +15,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.storm.s3.bolt.format;
+package org.apache.storm.s3.format;
 
-import backtype.storm.task.TopologyContext;
+
+import backtype.storm.tuple.Tuple;
+import storm.trident.tuple.TridentTuple;
 
 import java.io.Serializable;
-import java.util.Map;
 
 /**
- * Formatter interface for determining S3 file names.
+ * Formats a Tuple object into a byte array
+ * that will be written to S3.
  */
-public interface FileNameFormat extends Serializable {
+public interface RecordFormat extends Serializable {
 
-    void prepare(Map conf, TopologyContext topologyContext);
+    byte[] format(Tuple tuple);
 
-    /**
-     * Returns the filename the S3Bolt will create.
-     *
-     * @param rotation  the current file rotation number (incremented on every rotation)
-     * @param timeStamp current time in milliseconds when the rotation occurs
-     * @return
-     */
-    String getName(long rotation, long timeStamp);
-
-    String getPath();
+    byte[] format(TridentTuple tuple);
 }

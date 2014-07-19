@@ -27,13 +27,14 @@ import backtype.storm.topology.TopologyBuilder;
 import backtype.storm.topology.base.BaseRichSpout;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Values;
-import org.apache.storm.s3.bolt.format.DefaultFileNameFormat;
-import org.apache.storm.s3.bolt.format.DelimitedRecordFormat;
-import org.apache.storm.s3.bolt.format.FileNameFormat;
-import org.apache.storm.s3.bolt.format.RecordFormat;
-import org.apache.storm.s3.bolt.rotation.FileRotationPolicy;
-import org.apache.storm.s3.bolt.rotation.FileSizeRotationPolicy;
-import org.apache.storm.s3.bolt.rotation.FileSizeRotationPolicy.Units;
+import org.apache.storm.s3.S3Output;
+import org.apache.storm.s3.format.DefaultFileNameFormat;
+import org.apache.storm.s3.format.DelimitedRecordFormat;
+import org.apache.storm.s3.format.FileNameFormat;
+import org.apache.storm.s3.format.RecordFormat;
+import org.apache.storm.s3.rotation.FileRotationPolicy;
+import org.apache.storm.s3.rotation.FileSizeRotationPolicy;
+import org.apache.storm.s3.rotation.FileSizeRotationPolicy.Units;
 
 import java.util.Map;
 import java.util.UUID;
@@ -51,18 +52,20 @@ public class S3Topology {
         SentenceSpout spout = new SentenceSpout();
         FileRotationPolicy rotationPolicy = new FileSizeRotationPolicy(1.0f, Units.MB);
         FileNameFormat fileNameFormat = new DefaultFileNameFormat()
-                .withPath("/foo/")
+                .withPath("foo")
+                .withPrefix("test")
                 .withExtension(".txt");
 
         RecordFormat format = new DelimitedRecordFormat()
                 .withFieldDelimiter("|");
 
-        S3Bolt bolt = new S3Bolt()
-                .withFileNameFormat(fileNameFormat)
+        S3Output s3 = new S3Output().withFileNameFormat(fileNameFormat)
                 .withRecordFormat(format)
                 .withBucketName("storm-s3-test")
                 .withContentType("text/plain")
                 .withRotationPolicy(rotationPolicy);
+
+        S3Bolt bolt = new S3Bolt(s3);
 
         TopologyBuilder builder = new TopologyBuilder();
 
