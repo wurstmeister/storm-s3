@@ -26,7 +26,7 @@ import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.amazonaws.services.s3.transfer.TransferManager;
 import org.apache.storm.s3.format.DefaultFileNameFormat;
-import org.apache.storm.s3.output.MemBufferedS3OutputStream;
+import org.apache.storm.s3.output.S3MemBufferedOutputStream;
 import org.junit.Test;
 
 import java.io.*;
@@ -42,7 +42,7 @@ import static org.junit.Assert.assertEquals;
  * aws_access_key_id=<ACCESS_KEY>
  * aws_secret_access_key=<SECRET_KEY>
  */
-public class MemBufferedS3OutputStreamTest {
+public class S3MemBufferedOutputStreamTest {
 
     @Test
     public void testStream() throws IOException {
@@ -53,7 +53,7 @@ public class MemBufferedS3OutputStreamTest {
         String bucketName = "test-bucket-" + System.currentTimeMillis();
         client.createBucket(bucketName);
         TransferManager tx = new TransferManager(client);
-        OutputStream outputStream = new MemBufferedS3OutputStream(tx, bucketName,
+        OutputStream outputStream = new S3MemBufferedOutputStream(tx, bucketName,
                 new DefaultFileNameFormat().withPrefix("test"), "text/plain", 1, "test-id");
         OutputStreamWriter writer = new OutputStreamWriter(outputStream);
         PrintWriter printer = new PrintWriter(writer);

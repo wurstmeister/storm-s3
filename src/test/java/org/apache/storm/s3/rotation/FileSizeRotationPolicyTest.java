@@ -19,24 +19,18 @@ package org.apache.storm.s3.rotation;
 
 import org.junit.Test;
 
-import java.util.concurrent.TimeUnit;
-
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
-public class TimedRotationPolicyTest {
+public class FileSizeRotationPolicyTest {
 
 
     @Test
     public void testMark() throws Exception {
-        int duration = 2;
-        TimedRotationPolicy policy = new TimedRotationPolicy(duration, TimeUnit.SECONDS);
-        int sleepTime = 0;
-        while (!policy.mark(0)) {
-            Thread.sleep(1000);
-            sleepTime++;
-        }
-        assertEquals(sleepTime, duration);
+        FileSizeRotationPolicy policy = new FileSizeRotationPolicy(1.0F, FileSizeRotationPolicy.Units.KB);
+        assertFalse(policy.mark(1000));
+        assertFalse(policy.mark(23));
+        assertTrue(policy.mark(1));
         policy.reset();
         assertFalse(policy.mark(0L));
     }

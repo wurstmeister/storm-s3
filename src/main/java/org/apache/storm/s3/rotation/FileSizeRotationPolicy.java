@@ -54,26 +54,21 @@ public class FileSizeRotationPolicy implements FileRotationPolicy {
     }
 
     private long maxBytes;
-
-    private long lastOffset = 0;
-    private long currentBytesWritten = 0;
+    private long bytesWritten;
 
     public FileSizeRotationPolicy(float count, Units units) {
         this.maxBytes = (long) (count * units.getByteCount());
     }
 
     @Override
-    public boolean mark(long offset) {
-        long diff = offset - this.lastOffset;
-        this.currentBytesWritten += diff;
-        this.lastOffset = offset;
-        return this.currentBytesWritten >= this.maxBytes;
+    public boolean mark(long byteCount) {
+        bytesWritten += byteCount;
+        return bytesWritten >= this.maxBytes;
     }
 
     @Override
     public void reset() {
-        this.currentBytesWritten = 0;
-        this.lastOffset = 0;
+        bytesWritten = 0;
     }
 
 }

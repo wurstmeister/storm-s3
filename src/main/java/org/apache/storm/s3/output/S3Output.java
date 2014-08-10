@@ -15,13 +15,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.storm.s3;
+package org.apache.storm.s3.output;
 
+
+import backtype.storm.tuple.Tuple;
+import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.transfer.TransferManager;
-import org.apache.storm.s3.format.FileNameFormat;
-import org.apache.storm.s3.format.RecordFormat;
-import org.apache.storm.s3.output.MemBufferedS3OutputStream;
-import org.apache.storm.s3.rotation.FileRotationPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,41 +32,17 @@ import java.util.Map;
 public class S3Output implements Serializable {
 
     private static final Logger LOG = LoggerFactory.getLogger(S3Output.class);
-
-    private FileRotationPolicy rotationPolicy;
-    private FileNameFormat fileNameFormat;
     private int rotation = 0;
-    private long offset = 0;
-    private OutputStream out;
-    private RecordFormat format;
+    private S3MemBufferedOutputStream out;
     private TransferManager transferManager;
-    private String bucketName;
     private String contentType = "text/plain";
     private String identifier;
 
-    public S3Output withFileNameFormat(FileNameFormat fileNameFormat) {
-        this.fileNameFormat = fileNameFormat;
-        return this;
-    }
+    private S3Configuration configuration;
 
-    public S3Output withRecordFormat(RecordFormat format) {
-        this.format = format;
-        return this;
-    }
 
-    public S3Output withRotationPolicy(FileRotationPolicy rotationPolicy) {
-        this.rotationPolicy = rotationPolicy;
-        return this;
-    }
-
-    public S3Output withBucketName(String bucketName) {
-        this.bucketName = bucketName;
-        return this;
-    }
-
-    public S3Output withContentType(String contentType) {
-        this.contentType = contentType;
-        return this;
+    public S3Output(Map conf) {
+        configuration = new S3Configuration(conf);
     }
 
     public S3Output withIdentifier(String identifier) {
@@ -75,30 +50,32 @@ public class S3Output implements Serializable {
         return this;
     }
 
-    public RecordFormat getRecordFormat() {
-        return format;
-    }
-
     public void prepare(Map conf) throws IOException {
-        LOG.info("Preparing S3 Output ...");
-        if (this.bucketName == null) {
+        String bucketName = configuration.getBucketName();
+        if (bucketName == null) {
             throw new IllegalStateException("Bucket name must be specified.");
         }
-        transferManager = TransferManagerBuilder.buildTransferManager(conf);
-        transferManager.getAmazonS3Client().createBucket(bucketName);
+        LOG.info("Preparing S3 Output for bucket {}", bucketName);
+        if (transferManager == null) {
+            transferManager = TransferManagerBuilder.buildTransferManager(conf);
+        }
+        AmazonS3 amazonS3Client = transferManager.getAmazonS3Client();
+        if (!amazonS3Client.doesBucketExist(bucketName)) {
+            amazonS3Client.createBucket(bucketName);
+            LOG.info("Creating bucket {}",  bucketName);
+        }
+        LOG.info("Prepared S3 Output for bucket {} ", bucketName);
         createOutputFile();
     }
 
-    public void write(byte[] bytes) throws IOException {
+    public void write(Tuple tuple) throws IOException {
+        byte[] bytes = configuration.getRecordFormat().format(tuple);
         out.write(bytes);
-        this.offset += bytes.length;
-        if (this.rotationPolicy.mark(this.offset)) {
+        if (configuration.getRotationPolicy().mark(bytes.length)) {
             rotateOutputFile();
-            this.offset = 0;
-            this.rotationPolicy.reset();
+            configuration.getRotationPolicy().reset();
         }
     }
-
 
     private void rotateOutputFile() throws IOException {
         LOG.info("Rotating output file...");
@@ -111,7 +88,7 @@ public class S3Output implements Serializable {
     }
 
     private void createOutputFile() throws IOException {
-        this.out = new MemBufferedS3OutputStream(transferManager, bucketName, fileNameFormat, contentType, rotation, identifier);
+        this.out = new S3MemBufferedOutputStream(transferManager, configuration.getBucketName(), configuration.getFileNameFormat(), contentType, rotation, identifier);
     }
 
     private void closeOutputFile() throws IOException {

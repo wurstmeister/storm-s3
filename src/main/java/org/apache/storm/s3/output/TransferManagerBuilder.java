@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.storm.s3;
+package org.apache.storm.s3.output;
 
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.Protocol;
@@ -33,7 +33,7 @@ public class TransferManagerBuilder {
     public static final String S3_PROTOCOL = "S3_PROTOCOL";
     public static final String S3_PROXY = "S3_PROXY";
     public static final String S3_PROXY_PORT = "S3_PROXY_PORT";
-
+    public static final String S3_ENDPOINT = "S3_ENDPOINT";
 
     public static TransferManager buildTransferManager(Map conf) {
         Protocol protocol = Protocol.HTTPS;
@@ -58,6 +58,9 @@ public class TransferManagerBuilder {
             config.withProxyPort(proxyPort);
         }
         AmazonS3 client = new AmazonS3Client(credentials, config);
+        if (conf.containsKey(S3_ENDPOINT)) {
+            client.setEndpoint((String) conf.get(S3_ENDPOINT));
+        }
         return new TransferManager(client);
     }
 }

@@ -15,17 +15,39 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.storm.s3.trident.state;
+package org.apache.storm.s3.output;
 
-import storm.trident.operation.TridentCollector;
-import storm.trident.state.BaseStateUpdater;
+
+import com.amazonaws.services.s3.transfer.TransferManager;
 import storm.trident.tuple.TridentTuple;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
-public class S3Updater extends BaseStateUpdater<S3State> {
-    @Override
-    public void updateState(S3State state, List<TridentTuple> tuples, TridentCollector collector) {
-        state.updateState(tuples, collector);
+public class SimpleS3TransactionalOutput extends S3TransactionalOutput {
+
+
+    public SimpleS3TransactionalOutput(Map conf, TransferManager transferManager) {
+        super(conf, transferManager);
     }
+
+    public SimpleS3TransactionalOutput(Map conf) {
+        super(conf);
+    }
+
+    @Override
+    public void write(Long key, List<TridentTuple> tuples, Long txid) throws IOException {
+        for (TridentTuple tuple : tuples) {
+            write(tuple, txid);
+        }
+    }
+
+    @Override
+    public void write(List<TridentTuple> tuples, Long txid) throws IOException {
+        for (TridentTuple tuple : tuples) {
+            write(tuple, txid);
+        }
+    }
+
 }

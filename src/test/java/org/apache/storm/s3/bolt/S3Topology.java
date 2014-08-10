@@ -27,18 +27,12 @@ import backtype.storm.topology.TopologyBuilder;
 import backtype.storm.topology.base.BaseRichSpout;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Values;
-import org.apache.storm.s3.S3Output;
-import org.apache.storm.s3.format.DefaultFileNameFormat;
-import org.apache.storm.s3.format.DelimitedRecordFormat;
-import org.apache.storm.s3.format.FileNameFormat;
-import org.apache.storm.s3.format.RecordFormat;
-import org.apache.storm.s3.rotation.FileRotationPolicy;
-import org.apache.storm.s3.rotation.FileSizeRotationPolicy;
-import org.apache.storm.s3.rotation.FileSizeRotationPolicy.Units;
 
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static org.apache.storm.s3.output.S3Configuration.*;
 
 public class S3Topology {
     static final String SENTENCE_SPOUT_ID = "sentence-spout";
@@ -47,25 +41,15 @@ public class S3Topology {
 
     public static void main(String[] args) throws Exception {
         Config config = new Config();
-        config.setNumWorkers(1);
-
+        config.put(PREFIX, "test");
+        config.put(EXTENSION, ".txt");
+        config.put(PATH, "foo");
+        config.put(ROTATION_SIZE, 1.0F);
+        config.put(ROTATION_UNIT, "MB");
+        config.put(BUCKET_NAME, "test-bucket");
         SentenceSpout spout = new SentenceSpout();
-        FileRotationPolicy rotationPolicy = new FileSizeRotationPolicy(1.0f, Units.MB);
-        FileNameFormat fileNameFormat = new DefaultFileNameFormat()
-                .withPath("foo")
-                .withPrefix("test")
-                .withExtension(".txt");
 
-        RecordFormat format = new DelimitedRecordFormat()
-                .withFieldDelimiter("|");
-
-        S3Output s3 = new S3Output().withFileNameFormat(fileNameFormat)
-                .withRecordFormat(format)
-                .withBucketName("storm-s3-test")
-                .withContentType("text/plain")
-                .withRotationPolicy(rotationPolicy);
-
-        S3Bolt bolt = new S3Bolt(s3);
+        S3Bolt bolt = new S3Bolt();
 
         TopologyBuilder builder = new TopologyBuilder();
 

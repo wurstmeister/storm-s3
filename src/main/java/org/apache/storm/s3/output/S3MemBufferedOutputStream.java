@@ -20,6 +20,7 @@ package org.apache.storm.s3.output;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.transfer.TransferManager;
 import com.amazonaws.services.s3.transfer.Upload;
+import com.amazonaws.services.s3.transfer.model.UploadResult;
 import org.apache.storm.s3.format.FileNameFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,19 +30,24 @@ import java.io.*;
 /**
  * OutputStream that buffers data in memory before writing it to S3
  */
-public class MemBufferedS3OutputStream extends OutputStream {
+public class S3MemBufferedOutputStream extends OutputStream {
 
-    private static final Logger LOG = LoggerFactory.getLogger(MemBufferedS3OutputStream.class);
+    private static final Logger LOG = LoggerFactory.getLogger(S3MemBufferedOutputStream.class);
 
     private final String bucketName;
-    private final long rotation;
     private final String contentType;
     private final FileNameFormat fileNameFormat;
     private final ByteArrayOutputStream outputStream;
     private final TransferManager tx;
-    private final String identifier;
+    private long rotation;
+    private String identifier;
 
-    public MemBufferedS3OutputStream(TransferManager tx, String bucketName,
+    public S3MemBufferedOutputStream(TransferManager tx, String bucketName,
+                                     FileNameFormat fileNameFormat, String contentType, String identifier) {
+        this(tx, bucketName, fileNameFormat, contentType, 0L, identifier);
+    }
+
+    public S3MemBufferedOutputStream(TransferManager tx, String bucketName,
                                      FileNameFormat fileNameFormat, String contentType, long rotation, String identifier) {
         this.outputStream = new ByteArrayOutputStream();
         this.tx = tx;
@@ -58,7 +64,11 @@ public class MemBufferedS3OutputStream extends OutputStream {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() throws IOException  {
+        close(rotation);
+    }
+
+    public void close(long rotation) throws IOException {
         outputStream.close();
         final byte[] buf = outputStream.toByteArray();
         InputStream input = new ByteArrayInputStream(buf);
@@ -67,12 +77,11 @@ public class MemBufferedS3OutputStream extends OutputStream {
         meta.setContentLength(buf.length);
         final Upload myUpload = tx.upload(bucketName, fileNameFormat.getName(identifier, rotation, System.currentTimeMillis()), input, meta);
         try {
-            myUpload.waitForCompletion();
-            LOG.info(myUpload.getDescription());
+            UploadResult uploadResult = myUpload.waitForUploadResult();
+            LOG.info("Upload completed, bucket={}, key={}", uploadResult.getBucketName(), uploadResult.getKey());
         } catch (InterruptedException e) {
             throw new IOException(e);
         }
         input.close();
-
     }
 }

@@ -22,7 +22,7 @@ import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.topology.base.BaseRichBolt;
 import backtype.storm.tuple.Tuple;
-import org.apache.storm.s3.S3Output;
+import org.apache.storm.s3.output.S3Output;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,14 +36,11 @@ public class S3Bolt extends BaseRichBolt {
     private S3Output s3;
     private OutputCollector collector;
 
-    public S3Bolt(S3Output s3) {
-        this.s3 = s3;
-    }
-
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         try {
             this.collector = collector;
+            s3 = new S3Output(stormConf);
             String componentId = context.getThisComponentId();
             int taskId = context.getThisTaskId();
             s3.withIdentifier(componentId + "-" + taskId);
@@ -56,8 +53,7 @@ public class S3Bolt extends BaseRichBolt {
     @Override
     public void execute(Tuple tuple) {
         try {
-            byte[] bytes = s3.getRecordFormat().format(tuple);
-            s3.write(bytes);
+            s3.write(tuple);
             this.collector.ack(tuple);
         } catch (IOException e) {
             LOG.warn("write/sync failed.", e);
