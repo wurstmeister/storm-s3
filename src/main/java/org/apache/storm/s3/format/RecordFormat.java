@@ -18,8 +18,7 @@
 package org.apache.storm.s3.format;
 
 
-import backtype.storm.tuple.Tuple;
-import storm.trident.tuple.TridentTuple;
+import backtype.storm.tuple.ITuple;
 
 import java.io.Serializable;
 
@@ -29,7 +28,6 @@ import java.io.Serializable;
  */
 public interface RecordFormat extends Serializable {
 
-    byte[] format(Tuple tuple);
+    byte[] format(ITuple tuple);
 
-    byte[] format(TridentTuple tuple);
 }

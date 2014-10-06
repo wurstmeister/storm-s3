@@ -18,8 +18,7 @@
 package org.apache.storm.s3.format;
 
 import backtype.storm.tuple.Fields;
-import backtype.storm.tuple.Tuple;
-import storm.trident.tuple.TridentTuple;
+import backtype.storm.tuple.ITuple;
 
 /**
  * RecordFormat implementation that uses field and record delimiters.
@@ -72,28 +71,12 @@ public class DelimitedRecordFormat implements RecordFormat {
     }
 
     @Override
-    public byte[] format(Tuple tuple) {
+    public byte[] format(ITuple tuple) {
         StringBuilder sb = new StringBuilder();
         Fields fields = this.fields == null ? tuple.getFields() : this.fields;
         int size = fields.size();
         for (int i = 0; i < size; i++) {
             sb.append(tuple.getValueByField(fields.get(i)));
-            if (i != size - 1) {
-                sb.append(this.fieldDelimiter);
-            }
-        }
-        sb.append(this.recordDelimiter);
-        return sb.toString().getBytes();
-    }
-
-    @Override
-    public byte[] format(TridentTuple tuple) {
-        StringBuilder sb = new StringBuilder();
-        int size = this.fields.size();
-        for (int i = 0; i < size; i++) {
-            String field = fields.get(i);
-            Object valueByField = tuple.getValueByField(field);
-            sb.append(valueByField);
             if (i != size - 1) {
                 sb.append(this.fieldDelimiter);
             }
