@@ -18,7 +18,7 @@
 package org.apache.storm.s3.trident.state;
 
 import backtype.storm.topology.FailedException;
-import org.apache.storm.s3.output.S3TransactionalOutput;
+import org.apache.storm.s3.output.trident.S3TransactionalOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.trident.operation.TridentCollector;

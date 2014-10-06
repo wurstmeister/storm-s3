@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.storm.s3.output;
+package org.apache.storm.s3.output.trident;
 
 
 import com.amazonaws.services.s3.transfer.TransferManager;
@@ -25,19 +25,19 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
-public class SimpleS3TransactionalOutput extends S3TransactionalOutput {
+public class DefaultS3TransactionalOutput<T> extends S3TransactionalOutput<T> {
 
 
-    public SimpleS3TransactionalOutput(Map conf, TransferManager transferManager) {
-        super(conf, transferManager);
+    public DefaultS3TransactionalOutput(T key, Map conf, TransferManager transferManager, FileOutputFactory<T> fileOutputFactory) {
+        super(key, conf, transferManager, fileOutputFactory);
     }
 
-    public SimpleS3TransactionalOutput(Map conf) {
+    public DefaultS3TransactionalOutput(Map conf) {
         super(conf);
     }
 
     @Override
-    public void write(Long key, List<TridentTuple> tuples, Long txid) throws IOException {
+    public void write(T key, List<TridentTuple> tuples, Long txid) throws IOException {
         for (TridentTuple tuple : tuples) {
             write(tuple, txid);
         }

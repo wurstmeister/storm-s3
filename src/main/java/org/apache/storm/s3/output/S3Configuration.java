@@ -37,16 +37,20 @@ public class S3Configuration {
     public static final String ROTATION_SIZE = "ROTATION_SIZE";
     public static final String ROTATION_UNIT = "ROTATION_UNIT";
     public static final String BUCKET_NAME = "BUCKET_NAME";
+    public static final String CONTENT_TYPE = "CONTENT_TYPE";
 
     private FileRotationPolicy rotationPolicy;
     private FileNameFormat fileNameFormat;
     private RecordFormat format;
     private String bucketName;
+    private String extension;
+    private String contentType;
 
 
     public S3Configuration(Map conf) {
         String prefix = (String) conf.get(PREFIX);
-        String extension = (String) conf.get(EXTENSION);
+        extension = (String) conf.get(EXTENSION);
+        contentType = (String) conf.get(CONTENT_TYPE);
         String path = (String) conf.get(PATH);
         fileNameFormat = new DefaultFileNameFormat().withExtension(extension).withPath(path).withPrefix(prefix);
         Fields fields = null;
@@ -78,5 +82,13 @@ public class S3Configuration {
 
     public String getBucketName() {
         return bucketName;
+    }
+
+    public String getExtension() {
+        return extension;
+    }
+
+    public String getContentType() {
+        return contentType;
     }
 }

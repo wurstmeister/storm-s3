@@ -47,6 +47,7 @@ public class S3Topology {
         config.put(ROTATION_SIZE, 1.0F);
         config.put(ROTATION_UNIT, "MB");
         config.put(BUCKET_NAME, "test-bucket");
+        config.put(CONTENT_TYPE, "text/plain");
         SentenceSpout spout = new SentenceSpout();
 
         S3Bolt bolt = new S3Bolt();

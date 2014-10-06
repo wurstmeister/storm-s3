@@ -15,37 +15,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.storm.s3.trident.state;
+package org.apache.storm.s3.trident.state.map;
 
 import backtype.storm.task.IMetricsContext;
-import org.apache.storm.s3.output.trident.DefaultS3TransactionalOutput;
-import org.apache.storm.s3.output.trident.S3TransactionalOutput;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.storm.s3.output.trident.DefaultFileOutputFactory;
+import org.apache.storm.s3.output.trident.FileOutputFactory;
+import org.apache.storm.s3.output.trident.S3TransactionalOutputFactory;
 import storm.trident.state.State;
-import storm.trident.state.StateFactory;
+import storm.trident.state.map.TransactionalMap;
 
-import java.io.IOException;
+import storm.trident.state.StateFactory;
 import java.util.Map;
 
-public class S3StateFactory implements StateFactory {
-    private static final Logger LOG = LoggerFactory.getLogger(S3StateFactory.class);
+public class S3TransactionalStateFactory implements StateFactory {
 
-    public S3StateFactory() {
+    private FileOutputFactory fileOutputFactory = new DefaultFileOutputFactory();
+    private S3TransactionalOutputFactory factory;
 
+    public S3TransactionalStateFactory(S3TransactionalOutputFactory factory, FileOutputFactory fileOutputFactory) {
+        this.fileOutputFactory = fileOutputFactory;
+        this.factory = factory;
     }
 
-    @Override
     public State makeState(Map conf, IMetricsContext metrics, int partitionIndex, int numPartitions) {
-        LOG.info("makeState(partitionIndex={}, numpartitions={}", partitionIndex, numPartitions);
-        S3TransactionalOutput s3 = new DefaultS3TransactionalOutput(conf);
-        try {
-            s3.withBucketName("global-state");
-            s3.prepare(conf);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        S3State state = new S3State(s3);
-        return state;
+        return TransactionalMap.build(new S3MapState(conf, factory, fileOutputFactory));
     }
+
+
 }

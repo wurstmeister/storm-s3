@@ -23,9 +23,12 @@ import backtype.storm.StormSubmitter;
 import backtype.storm.generated.StormTopology;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Values;
-import org.apache.storm.s3.trident.state.S3StateFactory;
-import org.apache.storm.s3.trident.state.S3Updater;
-
+import org.apache.storm.s3.aggregator.ListAggregator;
+import org.apache.storm.s3.output.trident.DefaultFileOutputFactory;
+import org.apache.storm.s3.output.trident.FileOutputFactory;
+import org.apache.storm.s3.output.trident.DefaultS3TransactionalOutputFactory;
+import org.apache.storm.s3.output.trident.S3TransactionalOutputFactory;
+import org.apache.storm.s3.trident.state.map.S3TransactionalStateFactory;
 import storm.trident.Stream;
 import storm.trident.TridentTopology;
 import storm.trident.state.StateFactory;
@@ -36,7 +39,7 @@ import java.util.Map;
 
 import static org.apache.storm.s3.output.S3Configuration.*;
 
-public class TridentFileTopology {
+public class TridentMapStateTopology {
 
     public static StormTopology buildTopology(Map config) {
         FixedBatchSpout spout = new FixedBatchSpout(new Fields("sentence", "key"), 1000, new Values("the cow jumped over the moon", 1l),
@@ -48,16 +51,29 @@ public class TridentFileTopology {
         Stream stream = topology.newStream("spout1", spout);
 
         Fields fields = new Fields("sentence", "key");
-        config.put(PREFIX, "trident");
         config.put(EXTENSION, ".txt");
-        config.put(PATH, "trident");
         config.put(OUTPUT_FIELDS, Arrays.asList("sentence"));
         config.put(ROTATION_SIZE, 10.0F);
         config.put(ROTATION_UNIT, "KB");
         config.put(CONTENT_TYPE, "text/plain");
 
-        StateFactory factory = new S3StateFactory();
-        stream.partitionPersist(factory, fields, new S3Updater(), new Fields()).parallelismHint(3);
+        S3TransactionalOutputFactory s3TransactionalOutputFactory = new DefaultS3TransactionalOutputFactory<Long>();
+        FileOutputFactory fileOutputFactory = new DefaultFileOutputFactory<Long>() {
+
+            @Override
+            public String buildBucketName(Long key) {
+                return "sentences";
+            }
+
+            @Override
+            public String buildPath(Long key) {
+                return key.toString();
+            }
+        };
+
+
+        StateFactory factory = new S3TransactionalStateFactory(s3TransactionalOutputFactory, fileOutputFactory);
+        stream.groupBy(new Fields("key")).persistentAggregate(factory, fields, new ListAggregator(), new Fields()).parallelismHint(3);
 
         return topology.build();
     }
@@ -67,7 +83,7 @@ public class TridentFileTopology {
         config.setMaxSpoutPending(5);
         if (args.length == 0) {
             LocalCluster cluster = new LocalCluster();
-            cluster.submitTopology("S3-Trident", config, buildTopology(config));
+            cluster.submitTopology("S3-Trident-Map-State", config, buildTopology(config));
             Thread.sleep(120 * 1000);
         } else if (args.length == 1) {
             config.setNumWorkers(3);

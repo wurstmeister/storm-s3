@@ -50,6 +50,9 @@ public class DefaultFileNameFormat implements FileNameFormat {
     }
 
     public DefaultFileNameFormat withPath(String path) {
+        if (null == path) {
+            path = "";
+        }
         this.path = path;
         if (!this.path.endsWith("/")) {
             this.path = this.path + "/";

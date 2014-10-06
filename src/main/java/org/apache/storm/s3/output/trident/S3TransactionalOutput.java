@@ -15,10 +15,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.storm.s3.output;
+package org.apache.storm.s3.output.trident;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.transfer.TransferManager;
+import org.apache.storm.s3.format.DefaultFileNameFormat;
+import org.apache.storm.s3.format.FileNameFormat;
+import org.apache.storm.s3.output.S3Configuration;
+import org.apache.storm.s3.output.S3MemBufferedOutputStream;
+import org.apache.storm.s3.output.TransferManagerBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.trident.tuple.TridentTuple;
@@ -30,25 +35,27 @@ import java.util.Map;
 /**
  * This class is responsible for ensuring that output is only written on transaction boundaries.
  */
-public abstract class S3TransactionalOutput {
+public abstract class S3TransactionalOutput<T> {
 
     private static final Logger LOG = LoggerFactory.getLogger(S3TransactionalOutput.class);
 
     protected final S3Configuration configuration;
+    private T key;
+    private FileOutputFactory<T> fileOutputFactory;
     protected S3MemBufferedOutputStream out;
     protected TransferManager transferManager;
-    protected String bucketName;
-    protected String contentType = "text/plain";
-    protected String identifier;
+    private String bucketName;
     protected long transactionId = 1L;
     protected long latestTransactionInOutput = 1L;
     protected long previouslyClosedTransaction = 1L;
     protected boolean canRotate;
 
 
-    public S3TransactionalOutput(Map conf, TransferManager transferManager) {
-        configuration = new S3Configuration(conf);
+    public S3TransactionalOutput(T key, Map conf, TransferManager transferManager, FileOutputFactory<T> fileOutputFactory) {
+        this(conf);
         this.transferManager = transferManager;
+        this.fileOutputFactory = fileOutputFactory;
+        this.key = key;
     }
 
     public S3TransactionalOutput(Map conf) {
@@ -56,29 +63,31 @@ public abstract class S3TransactionalOutput {
     }
 
     public void prepare(Map conf) throws IOException {
-        if (this.bucketName == null) {
+        String bucket = bucketName();
+        if (bucket == null) {
             throw new IllegalStateException("Bucket name must be specified.");
         }
-        LOG.info("Preparing S3 Output for bucket {}", bucketName);
+        LOG.info("Preparing S3 Output for bucket {}", bucket);
+        transferManager = getTransferManager(conf);
+        AmazonS3 amazonS3Client = transferManager.getAmazonS3Client();
+        if (!amazonS3Client.doesBucketExist(bucket)) {
+            amazonS3Client.createBucket(bucket);
+            LOG.info("Creating bucket {}", bucket);
+        }
+        LOG.info("Prepared S3 Output for bucket {} ", bucket);
+        restoreState();
+        createOutputFile();
+    }
+
+    private TransferManager getTransferManager(Map conf) {
         if (transferManager == null) {
             transferManager = TransferManagerBuilder.buildTransferManager(conf);
         }
-        AmazonS3 amazonS3Client = transferManager.getAmazonS3Client();
-        if (!amazonS3Client.doesBucketExist(bucketName)) {
-            amazonS3Client.createBucket(bucketName);
-            LOG.info("Creating bucket {}",  bucketName);
-        }
-        LOG.info("Prepared S3 Output for bucket {} ", bucketName);
-        createOutputFile();
+        return transferManager;
     }
 
     public S3TransactionalOutput withBucketName(String bucketName) {
         this.bucketName = bucketName;
-        return this;
-    }
-
-    public S3TransactionalOutput withIdentifier(String identifier) {
-        this.identifier = identifier;
         return this;
     }
 
@@ -100,7 +109,7 @@ public abstract class S3TransactionalOutput {
         LOG.info("Rotating output file...");
         long start = System.currentTimeMillis();
         closeOutputFile();
-        LOG.info("closed {} with transactions {} - {}", new Object[]{bucketName, previouslyClosedTransaction, latestTransactionInOutput});
+        LOG.info("closed {} with transactions {} - {}", new Object[]{bucketName(), previouslyClosedTransaction, latestTransactionInOutput});
         previouslyClosedTransaction = latestTransactionInOutput;
         canRotate = false;
         createOutputFile();
@@ -110,7 +119,7 @@ public abstract class S3TransactionalOutput {
 
     protected final void write(TridentTuple tuple, long txId) throws IOException {
         if (txId != transactionId) {
-            LOG.debug("new transaction id {} --> {} -- {}, safe to rotate file", new Object[]{txId, transactionId, bucketName});
+            LOG.debug("new transaction id {} --> {} -- {}, safe to rotate file", new Object[]{txId, transactionId, bucketName()});
             canRotate = true;
             latestTransactionInOutput = transactionId;
         }
@@ -119,8 +128,21 @@ public abstract class S3TransactionalOutput {
     }
 
     private void createOutputFile() throws IOException {
-        this.out = new S3MemBufferedOutputStream(transferManager, bucketName, configuration.getFileNameFormat(),
-                contentType, identifier);
+        FileNameFormat format = configuration.getFileNameFormat();
+        if ( fileOutputFactory != null && key != null) {
+            format = new DefaultFileNameFormat().withPath(fileOutputFactory.buildPath(key)).withPrefix(fileOutputFactory.buildPrefix(key)).withExtension(configuration.getExtension());
+        }
+
+        this.out = new S3MemBufferedOutputStream(transferManager, bucketName(), format,
+                configuration.getContentType(), latestTransactionInOutput + "");
+    }
+
+    protected String bucketName(){
+        String bucket = bucketName;
+        if ( fileOutputFactory != null && key != null) {
+            bucket = fileOutputFactory.buildBucketName(key);
+        }
+        return bucket;
     }
 
     public Long getTransactionId() {
@@ -131,9 +153,22 @@ public abstract class S3TransactionalOutput {
         this.out.close(latestTransactionInOutput);
     }
 
-    public abstract void write(Long keyLong, List<TridentTuple> tuples, Long txid) throws IOException;
+    protected T getKey() {
+        return key;
+    }
+
+    public abstract void write(T keyLong, List<TridentTuple> tuples, Long txid) throws IOException;
 
     public abstract void write(List<TridentTuple> tuples, Long txid) throws IOException;
 
+    /**
+     * this method should be implemented by any implementation that allows
+     * state to be restored at startup
+     *
+     * @throws IOException
+     */
+    protected void restoreState() throws IOException{
+
+    }
 
 }
