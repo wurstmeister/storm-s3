@@ -35,13 +35,14 @@ import java.util.Map;
 public class S3MapState<T> implements IBackingMap<TransactionalValue<T>> {
 
     public static final Logger LOG = LoggerFactory.getLogger(S3MapState.class);
-    private Map conf, writers;
+    private Map conf;
+    private Map<T, S3TransactionalOutput> outputs;
     private S3TransactionalOutputFactory transactionalOutputFactory;
     private FileOutputFactory<T> fileOutputFactory;
 
 
     public S3MapState(Map conf, S3TransactionalOutputFactory transactionalOutputFactory, FileOutputFactory<T> fileOutputFactory) {
-        writers = new HashMap();
+        outputs = new HashMap();
         this.conf = conf;
         this.transactionalOutputFactory = transactionalOutputFactory;
         this.fileOutputFactory = fileOutputFactory;
@@ -84,7 +85,7 @@ public class S3MapState<T> implements IBackingMap<TransactionalValue<T>> {
     }
 
     private S3TransactionalOutput outputFor(T key) {
-        S3TransactionalOutput<T> output = (S3TransactionalOutput) writers.get(key);
+        S3TransactionalOutput<T> output = (S3TransactionalOutput) outputs.get(key);
         if (output == null) {
             output = transactionalOutputFactory.build(key, conf, fileOutputFactory);
             try {
@@ -92,7 +93,7 @@ public class S3MapState<T> implements IBackingMap<TransactionalValue<T>> {
             } catch (IOException e) {
                 throw new RuntimeException(e.getMessage());
             }
-            writers.put(key, output);
+            outputs.put(key, output);
         }
         return output;
     }
