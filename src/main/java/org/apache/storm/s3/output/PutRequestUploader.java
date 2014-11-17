@@ -15,26 +15,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.storm.s3.output.trident;
+package org.apache.storm.s3.output;
 
-import org.apache.storm.s3.output.UploaderFactory;
-import org.apache.storm.s3.output.Uploader;
 
-import java.util.Map;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.PutObjectRequest;
 
-public class DefaultS3TransactionalOutputFactory<T> implements S3TransactionalOutputFactory<T> {
+import java.io.IOException;
+import java.io.InputStream;
 
-    private Uploader transferManager;
+public class PutRequestUploader extends Uploader {
+
+    public PutRequestUploader(AmazonS3 client) {
+        super(client);
+    }
 
     @Override
-    public S3TransactionalOutput build(T key, Map conf, FileOutputFactory fileOutputFactory) {
-        return new DefaultS3TransactionalOutput(key, conf, getUploader(conf), fileOutputFactory);
+    public void upload(String bucketName, String name, InputStream input, ObjectMetadata meta) throws IOException {
+        client.putObject(new PutObjectRequest(bucketName, name, input, meta));
     }
 
-    private Uploader getUploader(Map conf) {
-        if (transferManager == null) {
-            transferManager = UploaderFactory.buildUploader(conf);
-        }
-        return transferManager;
-    }
 }

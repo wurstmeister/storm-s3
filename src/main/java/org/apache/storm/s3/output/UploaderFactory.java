@@ -17,6 +17,7 @@
  */
 package org.apache.storm.s3.output;
 
+
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.Protocol;
 import com.amazonaws.auth.AWSCredentials;
@@ -24,18 +25,23 @@ import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
-import com.amazonaws.services.s3.transfer.TransferManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
-public class TransferManagerBuilder {
+public class UploaderFactory {
+
+    private static final Logger LOG = LoggerFactory.getLogger(UploaderFactory.class);
 
     public static final String S3_PROTOCOL = "S3_PROTOCOL";
     public static final String S3_PROXY = "S3_PROXY";
     public static final String S3_PROXY_PORT = "S3_PROXY_PORT";
     public static final String S3_ENDPOINT = "S3_ENDPOINT";
+    public static final String UPLOADER_CLASS = "UPLOADER_CLASS";
 
-    public static TransferManager buildTransferManager(Map conf) {
+
+    public static Uploader buildUploader(Map conf) {
         Protocol protocol = Protocol.HTTPS;
         String proxy = null;
         int proxyPort = 0;
@@ -61,6 +67,20 @@ public class TransferManagerBuilder {
         if (conf.containsKey(S3_ENDPOINT)) {
             client.setEndpoint((String) conf.get(S3_ENDPOINT));
         }
-        return new TransferManager(client);
+        return getUploader(conf, client);
+    }
+
+    private static Uploader getUploader(Map stormConf, AmazonS3 client) {
+        Uploader uploader = new PutRequestUploader(client);
+        if (stormConf.containsKey(UPLOADER_CLASS)) {
+            String className = (String) stormConf.get(UPLOADER_CLASS);
+            try {
+                Class clazz = Class.forName(className);
+                uploader = (Uploader) clazz.getConstructor(AmazonS3.class).newInstance(client);
+            } catch (Exception e) {
+                LOG.error("Failed to construct serialization delegate, falling back to default", e);
+            }
+        }
+        return uploader;
     }
 }

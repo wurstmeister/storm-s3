@@ -19,13 +19,10 @@ package org.apache.storm.s3.output;
 
 
 import backtype.storm.tuple.Tuple;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.transfer.TransferManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.Serializable;
 import java.util.Map;
 
@@ -34,7 +31,7 @@ public class S3Output implements Serializable {
     private static final Logger LOG = LoggerFactory.getLogger(S3Output.class);
     private int rotation = 0;
     private S3MemBufferedOutputStream out;
-    private TransferManager transferManager;
+    private Uploader uploader;
     private String contentType = "text/plain";
     private String identifier;
 
@@ -56,14 +53,8 @@ public class S3Output implements Serializable {
             throw new IllegalStateException("Bucket name must be specified.");
         }
         LOG.info("Preparing S3 Output for bucket {}", bucketName);
-        if (transferManager == null) {
-            transferManager = TransferManagerBuilder.buildTransferManager(conf);
-        }
-        AmazonS3 amazonS3Client = transferManager.getAmazonS3Client();
-        if (!amazonS3Client.doesBucketExist(bucketName)) {
-            amazonS3Client.createBucket(bucketName);
-            LOG.info("Creating bucket {}",  bucketName);
-        }
+        uploader = UploaderFactory.buildUploader(conf);
+        uploader.ensureBucketExists(bucketName);
         LOG.info("Prepared S3 Output for bucket {} ", bucketName);
         createOutputFile();
     }
@@ -88,10 +79,11 @@ public class S3Output implements Serializable {
     }
 
     private void createOutputFile() throws IOException {
-        this.out = new S3MemBufferedOutputStream(transferManager, configuration.getBucketName(), configuration.getFileNameFormat(), contentType, rotation, identifier);
+        this.out = new S3MemBufferedOutputStream(uploader, configuration.getBucketName(),
+                configuration.getFileNameFormat(), contentType);
     }
 
     private void closeOutputFile() throws IOException {
-        this.out.close();
+        this.out.close(null, identifier, rotation);
     }
 }

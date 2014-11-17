@@ -15,26 +15,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.storm.s3.output.trident;
+package org.apache.storm.s3.output;
 
-import org.apache.storm.s3.output.UploaderFactory;
-import org.apache.storm.s3.output.Uploader;
+import backtype.storm.Config;
+import org.junit.Test;
 
-import java.util.Map;
+import static org.junit.Assert.*;
 
-public class DefaultS3TransactionalOutputFactory<T> implements S3TransactionalOutputFactory<T> {
+public class UploaderFactoryTest {
 
-    private Uploader transferManager;
-
-    @Override
-    public S3TransactionalOutput build(T key, Map conf, FileOutputFactory fileOutputFactory) {
-        return new DefaultS3TransactionalOutput(key, conf, getUploader(conf), fileOutputFactory);
+    @Test
+    public void testBuildUploader() throws Exception {
+        Uploader uploader = UploaderFactory.buildUploader(new Config());
+        assertTrue(uploader instanceof PutRequestUploader);
     }
 
-    private Uploader getUploader(Map conf) {
-        if (transferManager == null) {
-            transferManager = UploaderFactory.buildUploader(conf);
-        }
-        return transferManager;
+    @Test
+    public void testTransferManagerUploader() throws Exception {
+        Config config = new Config();
+        config.put(UploaderFactory.UPLOADER_CLASS, "org.apache.storm.s3.output.BlockingTransferManagerUploader");
+        Uploader uploader = UploaderFactory.buildUploader(config);
+        assertTrue(uploader instanceof BlockingTransferManagerUploader);
     }
 }

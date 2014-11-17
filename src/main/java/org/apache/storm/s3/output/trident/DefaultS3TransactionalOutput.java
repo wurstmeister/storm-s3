@@ -18,7 +18,7 @@
 package org.apache.storm.s3.output.trident;
 
 
-import com.amazonaws.services.s3.transfer.TransferManager;
+import org.apache.storm.s3.output.Uploader;
 import storm.trident.tuple.TridentTuple;
 
 import java.io.IOException;
@@ -28,8 +28,8 @@ import java.util.Map;
 public class DefaultS3TransactionalOutput<T> extends S3TransactionalOutput<T> {
 
 
-    public DefaultS3TransactionalOutput(T key, Map conf, TransferManager transferManager, FileOutputFactory<T> fileOutputFactory) {
-        super(key, conf, transferManager, fileOutputFactory);
+    public DefaultS3TransactionalOutput(T key, Map conf, Uploader uploader, FileOutputFactory<T> fileOutputFactory) {
+        super(key, conf, uploader, fileOutputFactory);
     }
 
     public DefaultS3TransactionalOutput(Map conf) {

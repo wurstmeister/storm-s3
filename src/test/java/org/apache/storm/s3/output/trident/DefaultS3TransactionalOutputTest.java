@@ -26,8 +26,9 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
-import com.amazonaws.services.s3.transfer.TransferManager;
 import org.apache.commons.io.FileUtils;
+import org.apache.storm.s3.output.BlockingTransferManagerUploader;
+import org.apache.storm.s3.output.Uploader;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -40,16 +41,15 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.storm.s3.output.S3Configuration.*;
-import static org.apache.storm.s3.output.S3Configuration.ROTATION_SIZE;
-import static org.apache.storm.s3.output.S3Configuration.ROTATION_UNIT;
 import static org.junit.Assert.assertEquals;
 
 public class DefaultS3TransactionalOutputTest {
 
     private Config config;
-    private TransferManager tx;
+    private Uploader tx;
     private FileOutputFactory fileOutputFactory;
     private String bucketName;
+    private AmazonS3 client;
 
     @Before
     public void setup() {
@@ -60,13 +60,13 @@ public class DefaultS3TransactionalOutputTest {
         config.put(OUTPUT_FIELDS, Arrays.asList("sentence"));
         config.put(ROTATION_SIZE, 1.0);
         config.put(ROTATION_UNIT, "KB");
+
         AWSCredentialsProvider provider = new ProfileCredentialsProvider("aws-testing");
         ClientConfiguration clientConfiguration = new ClientConfiguration();
-        AmazonS3 client = new AmazonS3Client(provider.getCredentials(), clientConfiguration);
-        tx = new TransferManager(client);
+        client = new AmazonS3Client(provider.getCredentials(), clientConfiguration);
+        tx = new BlockingTransferManagerUploader(client);
         bucketName = System.currentTimeMillis() + "-test-transactional-output-bucket";
         fileOutputFactory = new DefaultFileOutputFactory<Long>() {
-
             @Override
             public String buildBucketName(Long key) {
                 return bucketName;
@@ -80,8 +80,7 @@ public class DefaultS3TransactionalOutputTest {
     }
 
     @After
-    public void cleanup () {
-        AmazonS3 client = tx.getAmazonS3Client();
+    public void cleanup() {
         if (client.doesBucketExist(bucketName)) {
             ObjectListing objectListing = client.listObjects(bucketName);
             List<S3ObjectSummary> objectSummaries = objectListing.getObjectSummaries();
@@ -93,12 +92,12 @@ public class DefaultS3TransactionalOutputTest {
     }
 
     @Test
-      public void testWrite() throws Exception {
+    public void testWrite() throws Exception {
         S3TransactionalOutput<Long> output = new DefaultS3TransactionalOutput<Long>(1L, config, tx, fileOutputFactory);
         output.prepare(config);
         List<TridentTuple> tuples = Arrays.asList(TridentTupleView.createFreshTuple(new Fields("sentence"), "a"));
-        for ( int i = 0 ; i < 513 ; i++) {
-            output.write(tuples, (long)i);
+        for (int i = 0; i < 513; i++) {
+            output.write(tuples, (long) i);
         }
         String bucketName = fileOutputFactory.buildBucketName(1L);
         assertCorrectFileSize(bucketName, 512);
@@ -109,7 +108,7 @@ public class DefaultS3TransactionalOutputTest {
         S3TransactionalOutput<Long> output = new DefaultS3TransactionalOutput<Long>(1L, config, tx, fileOutputFactory);
         output.prepare(config);
         List<TridentTuple> tuples = Arrays.asList(TridentTupleView.createFreshTuple(new Fields("sentence"), "a"));
-        for ( int i = 0 ; i < 514 ; i++) {
+        for (int i = 0; i < 514; i++) {
             output.write(tuples, 1L);
         }
         output.write(tuples, 2L);
@@ -119,7 +118,6 @@ public class DefaultS3TransactionalOutputTest {
     }
 
     private void assertCorrectFileSize(String bucketName, int size) throws IOException {
-        AmazonS3 client = tx.getAmazonS3Client();
         ObjectListing objectListing = client.listObjects(bucketName);
         List<S3ObjectSummary> objectSummaries = objectListing.getObjectSummaries();
         assertEquals(1, objectSummaries.size());

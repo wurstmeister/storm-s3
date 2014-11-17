@@ -17,13 +17,12 @@
  */
 package org.apache.storm.s3.output.trident;
 
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.transfer.TransferManager;
 import org.apache.storm.s3.format.DefaultFileNameFormat;
 import org.apache.storm.s3.format.FileNameFormat;
 import org.apache.storm.s3.output.S3Configuration;
 import org.apache.storm.s3.output.S3MemBufferedOutputStream;
-import org.apache.storm.s3.output.TransferManagerBuilder;
+import org.apache.storm.s3.output.UploaderFactory;
+import org.apache.storm.s3.output.Uploader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.trident.tuple.TridentTuple;
@@ -43,17 +42,18 @@ public abstract class S3TransactionalOutput<T> {
     private T key;
     private FileOutputFactory<T> fileOutputFactory;
     protected S3MemBufferedOutputStream out;
-    protected TransferManager transferManager;
+    protected Uploader uploader;
     private String bucketName;
     protected long transactionId = 1L;
-    protected long latestTransactionInOutput = 1L;
-    protected long previouslyClosedTransaction = 1L;
+    protected long latestTransactionInOutput = -1L;
     protected boolean canRotate;
+    private long firstTransactionInOutput;
+    private long rotation = 1L;
 
 
-    public S3TransactionalOutput(T key, Map conf, TransferManager transferManager, FileOutputFactory<T> fileOutputFactory) {
+    public S3TransactionalOutput(T key, Map conf, Uploader uploader, FileOutputFactory<T> fileOutputFactory) {
         this(conf);
-        this.transferManager = transferManager;
+        this.uploader = uploader;
         this.fileOutputFactory = fileOutputFactory;
         this.key = key;
     }
@@ -68,22 +68,19 @@ public abstract class S3TransactionalOutput<T> {
             throw new IllegalStateException("Bucket name must be specified.");
         }
         LOG.info("Preparing S3 Output for bucket {}", bucket);
-        transferManager = getTransferManager(conf);
-        AmazonS3 amazonS3Client = transferManager.getAmazonS3Client();
-        if (!amazonS3Client.doesBucketExist(bucket)) {
-            amazonS3Client.createBucket(bucket);
-            LOG.info("Creating bucket {}", bucket);
-        }
+        uploader = getUploader(conf);
+        uploader.ensureBucketExists(bucket);
         LOG.info("Prepared S3 Output for bucket {} ", bucket);
         restoreState();
+        firstTransactionInOutput = transactionId;
         createOutputFile();
     }
 
-    private TransferManager getTransferManager(Map conf) {
-        if (transferManager == null) {
-            transferManager = TransferManagerBuilder.buildTransferManager(conf);
+    private Uploader getUploader(Map conf) {
+        if (uploader == null) {
+            uploader = UploaderFactory.buildUploader(conf);
         }
-        return transferManager;
+        return uploader;
     }
 
     public S3TransactionalOutput withBucketName(String bucketName) {
@@ -109,12 +106,13 @@ public abstract class S3TransactionalOutput<T> {
         LOG.info("Rotating output file...");
         long start = System.currentTimeMillis();
         closeOutputFile();
-        LOG.info("closed {} with transactions {} - {}", new Object[]{bucketName(), previouslyClosedTransaction, latestTransactionInOutput});
-        previouslyClosedTransaction = latestTransactionInOutput;
+        LOG.info("closed {} with transactions {} - {}", new Object[]{bucketName(), firstTransactionInOutput, latestTransactionInOutput});
+        firstTransactionInOutput = transactionId;
         canRotate = false;
         createOutputFile();
         long time = System.currentTimeMillis() - start;
         LOG.info("File rotation took {} ms.", time);
+        rotation++;
     }
 
     protected final void write(TridentTuple tuple, long txId) throws IOException {
@@ -133,8 +131,7 @@ public abstract class S3TransactionalOutput<T> {
             format = new DefaultFileNameFormat().withPath(fileOutputFactory.buildPath(key)).withPrefix(fileOutputFactory.buildPrefix(key)).withExtension(configuration.getExtension());
         }
 
-        this.out = new S3MemBufferedOutputStream(transferManager, bucketName(), format,
-                configuration.getContentType(), latestTransactionInOutput + "");
+        this.out = new S3MemBufferedOutputStream(uploader, bucketName(), format, configuration.getContentType());
     }
 
     protected String bucketName(){
@@ -150,7 +147,8 @@ public abstract class S3TransactionalOutput<T> {
     }
 
     protected void closeOutputFile() throws IOException {
-        this.out.close(latestTransactionInOutput);
+        String identifier = firstTransactionInOutput + "_" + latestTransactionInOutput;
+        this.out.close(key, identifier, rotation);
     }
 
     protected T getKey() {

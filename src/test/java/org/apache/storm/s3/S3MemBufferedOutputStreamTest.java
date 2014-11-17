@@ -26,7 +26,9 @@ import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.amazonaws.services.s3.transfer.TransferManager;
 import org.apache.storm.s3.format.DefaultFileNameFormat;
+import org.apache.storm.s3.output.PutRequestUploader;
 import org.apache.storm.s3.output.S3MemBufferedOutputStream;
+import org.apache.storm.s3.output.Uploader;
 import org.junit.Test;
 
 import java.io.*;
@@ -53,8 +55,9 @@ public class S3MemBufferedOutputStreamTest {
         String bucketName = "test-bucket-" + System.currentTimeMillis();
         client.createBucket(bucketName);
         TransferManager tx = new TransferManager(client);
-        OutputStream outputStream = new S3MemBufferedOutputStream(tx, bucketName,
-                new DefaultFileNameFormat().withPrefix("test"), "text/plain", 1, "test-id");
+        Uploader uploader = new PutRequestUploader(tx.getAmazonS3Client());
+        OutputStream outputStream = new S3MemBufferedOutputStream(uploader, bucketName,
+                new DefaultFileNameFormat().withPrefix("test"), "text/plain");
         OutputStreamWriter writer = new OutputStreamWriter(outputStream);
         PrintWriter printer = new PrintWriter(writer);
         printer.println("line1");
