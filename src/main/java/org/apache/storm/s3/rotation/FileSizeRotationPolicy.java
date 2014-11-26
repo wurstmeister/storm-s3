@@ -60,6 +60,13 @@ public class FileSizeRotationPolicy implements FileRotationPolicy {
         this.maxBytes = (long) (count * units.getByteCount());
     }
 
+    /**
+     * @return the max number of bytes written to a file.
+     */
+    public long getMaxBytes(){
+        return maxBytes;
+    }
+
     @Override
     public boolean mark(long byteCount) {
         bytesWritten += byteCount;
@@ -70,5 +77,7 @@ public class FileSizeRotationPolicy implements FileRotationPolicy {
     public void reset() {
         bytesWritten = 0;
     }
+
+
 
 }
