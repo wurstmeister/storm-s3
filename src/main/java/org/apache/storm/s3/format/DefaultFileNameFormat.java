@@ -17,52 +17,16 @@
  */
 package org.apache.storm.s3.format;
 
+import org.apache.storm.s3.output.trident.FileOutputFactory;
+
 /**
  *
  */
-public class DefaultFileNameFormat implements FileNameFormat {
-
-    public static final String DELIMITER = "-";
-    private String path = "storm/";
-    private String prefix = "";
-    private String extension = ".txt";
-
-    /**
-     * Overrides the default prefix.
-     *
-     * @param prefix
-     * @return
-     */
-    public DefaultFileNameFormat withPrefix(String prefix) {
-        this.prefix = prefix;
-        return this;
-    }
-
-    /**
-     * Overrides the default file extension.
-     *
-     * @param extension
-     * @return
-     */
-    public DefaultFileNameFormat withExtension(String extension) {
-        this.extension = extension;
-        return this;
-    }
-
-    public DefaultFileNameFormat withPath(String path) {
-        if (null == path) {
-            path = "";
-        }
-        this.path = path;
-        if (!this.path.endsWith("/")) {
-            this.path = this.path + "/";
-        }
-        return this;
-    }
+public class DefaultFileNameFormat extends AbstractFileNameFormat {
 
     @Override
-    public String getName(String identifier, long rotation, long timeStamp) {
-        return this.path + this.prefix + DELIMITER + identifier + DELIMITER + rotation + DELIMITER + timeStamp + this.extension;
+    public String getName(Object key, String identifier, long rotation, long timeStamp) {
+        return this.path + this.prefix + this.delimiter + identifier + this.delimiter + rotation + this.delimiter + timeStamp + this.extension;
     }
 
 }

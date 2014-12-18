@@ -17,8 +17,8 @@
  */
 package org.apache.storm.s3.output.trident;
 
+import org.apache.storm.s3.format.AbstractFileNameFormat;
 import org.apache.storm.s3.format.DefaultFileNameFormat;
-import org.apache.storm.s3.format.FileNameFormat;
 import org.apache.storm.s3.output.S3Configuration;
 import org.apache.storm.s3.output.S3MemBufferedOutputStream;
 import org.apache.storm.s3.output.UploaderFactory;
@@ -126,11 +126,7 @@ public abstract class S3TransactionalOutput<T> {
     }
 
     private void createOutputFile() throws IOException {
-        FileNameFormat format = configuration.getFileNameFormat();
-        if ( fileOutputFactory != null && key != null) {
-            format = new DefaultFileNameFormat().withPath(fileOutputFactory.buildPath(key)).withPrefix(fileOutputFactory.buildPrefix(key)).withExtension(configuration.getExtension());
-        }
-
+        AbstractFileNameFormat format = configuration.getFileNameFormat().withFileOutputFactory(fileOutputFactory);
         this.out = new S3MemBufferedOutputStream(uploader, bucketName(), format, configuration.getContentType());
     }
 

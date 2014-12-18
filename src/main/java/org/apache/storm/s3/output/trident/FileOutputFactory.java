@@ -20,7 +20,12 @@ package org.apache.storm.s3.output.trident;
 import java.io.Serializable;
 
 /**
- * Allows for dynamic file name generation at runtime
+ * Allows control of the S3 Bucket files are written to. The file name is controlled by the
+ * implementation of <Code>org.apache.storm.s3.format.FileNameFormat</Code>
+ *
+ * The S3 bucket name will generated using:
+ * <code>buildBucketName()</code>
+ *
  * @param <T>
  */
 public interface FileOutputFactory<T> extends Serializable {
