@@ -20,13 +20,14 @@ package org.apache.storm.s3.format;
 import org.apache.storm.s3.output.trident.FileOutputFactory;
 
 /**
- *
+ * Not a useful <Code>FileNameFormat</Code>!<br>
+ * Used to test configuration of setting custom <Code>FileNameFormat</Code> in <Code>S3Configuration</Code>.
  */
-public class DefaultFileNameFormat extends AbstractFileNameFormat {
+public class FooBarFileNameFormat extends AbstractFileNameFormat {
 
     @Override
     public String getName(Object key, String identifier, long rotation, long timeStamp) {
-        return this.path + this.prefix + this.delimiter + identifier + this.delimiter + rotation + this.delimiter + timeStamp + this.extension;
+        return "FooBar.txt";
     }
 
 }

@@ -18,11 +18,12 @@
 package org.apache.storm.s3.output;
 
 import com.amazonaws.services.s3.model.ObjectMetadata;
-import org.apache.storm.s3.format.FileNameFormat;
+import org.apache.storm.s3.format.AbstractFileNameFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+
 
 /**
  * OutputStream that buffers data in memory before writing it to S3
@@ -33,12 +34,13 @@ public class S3MemBufferedOutputStream<T> extends OutputStream {
 
     private final String bucketName;
     private final String contentType;
-    private final FileNameFormat fileNameFormat;
+    private final AbstractFileNameFormat fileNameFormat;
     private final ByteArrayOutputStream outputStream;
     private final Uploader uploader;
 
     public S3MemBufferedOutputStream(Uploader uploader, String bucketName,
-                                     FileNameFormat fileNameFormat, String contentType) {
+                                     AbstractFileNameFormat fileNameFormat, String contentType) {
+
         this.outputStream = new ByteArrayOutputStream();
         this.uploader = uploader;
         this.bucketName = bucketName;
@@ -61,7 +63,7 @@ public class S3MemBufferedOutputStream<T> extends OutputStream {
     }
 
     public void close(T key, String identifier, long rotation) throws IOException {
-        String name = fileNameFormat.getName(identifier, rotation, System.currentTimeMillis());
+        String name = fileNameFormat.getName(key, identifier, rotation, System.currentTimeMillis());
         LOG.info("uploading {}/{} to S3",bucketName, name);
         outputStream.close();
         final byte[] buf = outputStream.toByteArray();
